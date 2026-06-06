@@ -1,0 +1,17 @@
+# Không push API key / secrets
+.env
+*.env
+api_key.txt
+secret.txt
+secrets.json
+*.key
+
+# Cache / output OCR
+__pycache__/
+*.pyc
+output/
+temp_images/
+.ocr_cache/
+*.log
+.venv-win/
+
