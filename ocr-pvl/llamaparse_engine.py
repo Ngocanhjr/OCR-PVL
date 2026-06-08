@@ -26,7 +26,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Optional
 
+from apply_metadata import apply_metadata_to_markdown
 from table_form_postprocess import postprocess_final_markdown
+from validate_metadata import validate_metadata_text
 
 
 def _load_dotenv_if_available() -> list[Path]:
@@ -564,6 +566,19 @@ def save_llamaparse_markdown(
     """Parse file bằng LlamaParse và lưu Markdown ra output_path."""
     markdown = parse_with_llamaparse(input_path, cfg)
     out = Path(output_path).expanduser().resolve()
+    markdown = apply_metadata_to_markdown(
+        markdown,
+        md_path=out,
+        source_file=input_path,
+        parser="llamaparse",
+        ocr_engine="llamaparse",
+        ocr_status="done",
+    )
+    errors, warnings = validate_metadata_text(markdown)
+    for error in errors:
+        print(f"[METADATA ERROR] {out}: {error}")
+    for warning in warnings:
+        print(f"[METADATA WARN] {out}: {warning}")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(markdown, encoding="utf-8")
     return out

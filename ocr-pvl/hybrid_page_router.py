@@ -20,6 +20,8 @@ from config import CAU_HINH_MAC_DINH, ghi_text_unicode, tao_thu_muc_can_thiet, t
 from document_page_analyzer import analyze_pdf_pages, group_contiguous_pages, table_pages_from_signals
 from llamaparse_engine import LlamaParseConfig, parse_with_llamaparse
 from table_form_postprocess import postprocess_final_markdown
+from apply_metadata import apply_metadata_to_markdown
+from validate_metadata import validate_metadata_text
 from page_markers import (
     PAGE_MARKER_RE,
     clean_page_block,
@@ -323,6 +325,17 @@ def run_table_safe_pdf(
     ordered_blocks = [page_blocks.get(p, make_page_block(p, "[Không tạo được nội dung trang này]")) for p in all_pages]
     final_md = header + debug_log + "\n\n" + "\n\n---\n\n".join(clean_page_block(b) for b in ordered_blocks).strip() + "\n"
     final_md = postprocess_final_markdown(final_md)
+    final_md = apply_metadata_to_markdown(
+        final_md,
+        md_path=output_path,
+        source_file=input_path,
+        language=getattr(base_config, "ngon_ngu_ocr", "vi"),
+    )
+    errors, warnings = validate_metadata_text(final_md)
+    for error in errors:
+        print(f"[METADATA ERROR] {output_path}: {error}")
+    for warning in warnings:
+        print(f"[METADATA WARN] {output_path}: {warning}")
 
     ghi_text_unicode(output_path, final_md)
     return output_path

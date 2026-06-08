@@ -41,6 +41,8 @@ from text_layer_quality import is_bad_pdf_text_layer
 from ctu_terms import canh_bao_thuat_ngu_ctu, hau_xu_ly_tu_dien_ctu
 from table_form_postprocess import postprocess_final_markdown
 from page_markers import page_marker
+from apply_metadata import apply_metadata_to_markdown
+from validate_metadata import validate_metadata_text
 
 
 # =========================================================
@@ -301,6 +303,23 @@ def tao_metadata_markdown(file_path: str | Path, metadata: dict[str, int], cau_h
     return "\n".join(lines)
 
 
+def gan_yaml_metadata_chuan(final_md: str, output_path: str | Path, source_path: str | Path, cau_hinh: CauHinhOCR) -> str:
+    """Gắn YAML front matter chuẩn cho output OCR trước khi ghi Markdown."""
+
+    final_md = apply_metadata_to_markdown(
+        final_md,
+        md_path=output_path,
+        source_file=source_path,
+        language=cau_hinh.ngon_ngu_ocr,
+    )
+    errors, warnings = validate_metadata_text(final_md)
+    for error in errors:
+        print(f"[METADATA ERROR] {output_path}: {error}")
+    for warning in warnings:
+        print(f"[METADATA WARN] {output_path}: {warning}")
+    return final_md
+
+
 def xu_ly_mot_file(file_path: str | Path, cau_hinh: CauHinhOCR, force: bool = False) -> str | None:
     """Xử lý một file PDF/ảnh, ghi Markdown và review report."""
 
@@ -323,6 +342,7 @@ def xu_ly_mot_file(file_path: str | Path, cau_hinh: CauHinhOCR, force: bool = Fa
 
     final_md = tao_metadata_markdown(path, metadata, cau_hinh) + body
     final_md = postprocess_final_markdown(final_md)
+    final_md = gan_yaml_metadata_chuan(final_md, out_path, path, cau_hinh)
     ghi_text_unicode(out_path, final_md)
 
     extra_warnings = canh_bao_thuat_ngu_ctu(final_md) if cau_hinh.dung_tu_dien_ctu else []
@@ -580,6 +600,7 @@ def xu_ly_file_bang_cli(input_file: Path, args: argparse.Namespace, force: bool 
         body, metadata = xu_ly_file_anh(input_file, cau_hinh)
         final_md = tao_metadata_markdown(input_file, metadata, cau_hinh) + body
         final_md = postprocess_final_markdown(final_md)
+        final_md = gan_yaml_metadata_chuan(final_md, output_path, input_file, cau_hinh)
         ghi_text_unicode(output_path, final_md)
         return output_path
 

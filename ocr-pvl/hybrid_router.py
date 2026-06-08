@@ -18,7 +18,9 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
+from apply_metadata import apply_metadata_to_markdown
 from llamaparse_engine import LlamaParseConfig, save_llamaparse_markdown
+from validate_metadata import validate_metadata_text
 
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
@@ -140,6 +142,17 @@ def run_local_paddle_vietocr(
         raise ValueError(f"Định dạng local PadViet chưa hỗ trợ: {input_path.suffix}")
 
     final_md = tao_metadata_markdown(input_path, metadata, cau_hinh) + body
+    final_md = apply_metadata_to_markdown(
+        final_md,
+        md_path=output_path,
+        source_file=input_path,
+        language=cau_hinh.ngon_ngu_ocr,
+    )
+    errors, warnings = validate_metadata_text(final_md)
+    for error in errors:
+        print(f"[METADATA ERROR] {output_path}: {error}")
+    for warning in warnings:
+        print(f"[METADATA WARN] {output_path}: {warning}")
     ghi_text_unicode(output_path, final_md)
 
     if cau_hinh.dung_tu_dien_ctu or cau_hinh.dung_loi_rieng:

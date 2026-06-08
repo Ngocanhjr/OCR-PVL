@@ -305,3 +305,20 @@ Codespaces/Linux:
 export LLAMA_CLOUD_API_KEY="llx_API_KEY_CUA_BAN"
 ```
 
+# Summary
+
+```bash
+cd /d E:\RHNA\Visual\NLCS\CTU-Service\ocr\ocr-pvl
+
+C:\Users\ASUS\AppData\Local\Programs\Python\Python312\python.exe -m venv .venv
+
+.venv\Scripts\activate.bat
+
+where python
+
+python -m pip install --upgrade pip
+
+
+pip install -r requirements.txt
+
+```
