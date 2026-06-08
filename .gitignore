@@ -15,3 +15,5 @@ temp_images/
 *.log
 .venv-win/
 .env
+.venv/
+.vscode/
