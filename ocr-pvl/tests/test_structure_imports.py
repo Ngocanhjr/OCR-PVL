@@ -12,11 +12,11 @@ class StructureImportTest(unittest.TestCase):
         self.assertIn("<!-- page: 1 -->", postprocess_final_markdown("## Trang 1\nNội dung"))
 
     def test_router_modules_are_available_from_new_packages(self) -> None:
-        from pipeline.hybrid_page_router import parse_manual_pages as packaged_parse_manual_pages
-        from pipeline.hybrid_router import run_hybrid_parse
+        from pipeline.hybrid_page_router import parse_manual_pages
+        from pipeline.hybrid_router import run_document_parse
 
-        self.assertEqual(packaged_parse_manual_pages("1,3-4"), [1, 3, 4])
-        self.assertTrue(callable(run_hybrid_parse))
+        self.assertEqual(parse_manual_pages("1,3-4"), [1, 3, 4])
+        self.assertTrue(callable(run_document_parse))
 
 
 if __name__ == "__main__":

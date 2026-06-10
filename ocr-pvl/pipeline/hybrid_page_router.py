@@ -55,9 +55,6 @@ def parse_manual_pages(value: str | None) -> list[int]:
 
 
 
-def split_local_markdown_by_page(body: str) -> dict[int, str]:
-    """Tách body Markdown local theo page marker comment, vẫn hỗ trợ output cũ `## Trang n`."""
-    return split_markdown_by_page(body)
 
 
 def split_llama_markdown_by_page(markdown: str, expected_pages: list[int]) -> dict[int, str]:
@@ -150,24 +147,6 @@ def llama_body_for_range(
     markdown = parse_with_llamaparse(input_path, cfg)
     return split_llama_markdown_by_page(markdown, expected_pages)
 
-
-def build_table_safe_metadata(
-    input_path: str | Path,
-    total_pages: int,
-    page_start: int,
-    page_end: int,
-    local_pages: list[int],
-    llama_pages: list[int],
-    engine_mode: str,
-) -> str:
-    """DEPRECATED: compatibility stub for the old TableSafe Markdown header.
-
-    Canonical output metadata now lives in YAML front matter through
-    `apply_metadata_to_markdown()`. This function intentionally returns an empty
-    string and should not be used by new code.
-    """
-
-    return ""
 
 
 def get_pdf_total_pages(pdf_path: str | Path) -> int:
@@ -274,7 +253,7 @@ def run_table_safe_pdf(
     # 1) Chạy local cho các trang văn bản thường.
     for group_start, group_end in group_contiguous_pages(local_pages):
         body, _metadata = local_body_for_range(input_path, output_path.parent, group_start, group_end, base_config=base_config)
-        page_blocks.update(split_local_markdown_by_page(body))
+        page_blocks.update(split_markdown_by_page(body))
 
     # 2) Chạy LlamaParse cho các trang bảng/lưu đồ thật.
     for group_start, group_end in group_contiguous_pages(llama_pages):

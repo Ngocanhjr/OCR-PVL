@@ -6,7 +6,6 @@ Router cấp tài liệu/file cho các input không đi theo luồng PDF TableSa
 Phân ranh với `hybrid_page_router.py`:
 - PDF từ CLI `main.py` luôn đi qua `hybrid_page_router.run_table_safe_pdf()`.
 - File ảnh/DOCX/PPTX/XLSX/CSV/HTML khi cần LlamaParse đi qua `run_document_parse()`.
-- `run_hybrid_parse()` chỉ còn là alias tương thích cho caller cũ.
 
 File này đã được chỉnh theo source OCR_PadViet_main_new.zip:
 - Không dùng `from ocr_engine import process_file` vì source PadViet không có hàm đó.
@@ -210,33 +209,3 @@ def run_document_parse(
         return save_llamaparse_markdown(input_path, output_path, cfg)
 
     return run_local_paddle_vietocr(input_path, output_path, page_start, page_end)
-
-
-def run_hybrid_parse(
-    input_path: str | Path,
-    output_path: str | Path,
-    engine: str = "auto",
-    page_start: Optional[int] = None,
-    page_end: Optional[int] = None,
-    llama_tier: str = "agentic",
-    export_tables_as_xlsx: bool = False,
-    preserve_spatial_text: bool = False,
-    disable_cache: bool = False,
-    aggressive_tables: bool = False,
-    repair_false_tables: bool = True,
-) -> Path:
-    """DEPRECATED: compatibility alias for `run_document_parse()`."""
-
-    return run_document_parse(
-        input_path=input_path,
-        output_path=output_path,
-        engine=engine,
-        page_start=page_start,
-        page_end=page_end,
-        llama_tier=llama_tier,
-        export_tables_as_xlsx=export_tables_as_xlsx,
-        preserve_spatial_text=preserve_spatial_text,
-        disable_cache=disable_cache,
-        aggressive_tables=aggressive_tables,
-        repair_false_tables=repair_false_tables,
-    )

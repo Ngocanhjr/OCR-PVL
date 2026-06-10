@@ -89,15 +89,8 @@ can be handled without initializing heavy OCR dependencies.
 
 ## Metadata Output
 
-Raw Markdown metadata headers are deprecated. Canonical metadata is attached as YAML
-front matter through `apply_metadata_to_markdown()`.
-
-Compatibility stubs remain in place:
-
-- `main.tao_metadata_markdown()`
-- `pipeline.hybrid_page_router.build_table_safe_metadata()`
-
-These stubs intentionally return an empty string and should not be used by new code.
+Canonical metadata is attached as YAML front matter through
+`apply_metadata_to_markdown()` in `validation/apply_metadata.py`.
 
 ## Safe Refactor Boundary
 

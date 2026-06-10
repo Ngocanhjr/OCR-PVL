@@ -271,15 +271,6 @@ def xu_ly_file_anh(image_path: str | Path, cau_hinh: CauHinhOCR) -> tuple[str, d
     return "\n\n".join(parts), metadata
 
 
-def tao_metadata_markdown(file_path: str | Path, metadata: dict[str, int], cau_hinh: CauHinhOCR) -> str:
-    """DEPRECATED: compatibility stub for the old raw Markdown metadata block.
-
-    Output metadata now belongs in YAML front matter via `gan_yaml_metadata_chuan()`
-    or `apply_metadata_to_markdown()`. This function intentionally returns an empty
-    string and should not be used by new code.
-    """
-
-    return ""
 
 
 def gan_yaml_metadata_chuan(final_md: str, output_path: str | Path, source_path: str | Path, cau_hinh: CauHinhOCR) -> str:
@@ -299,52 +290,7 @@ def gan_yaml_metadata_chuan(final_md: str, output_path: str | Path, source_path:
     return final_md
 
 
-def xu_ly_mot_file(file_path: str | Path, cau_hinh: CauHinhOCR, force: bool = False) -> str | None:
-    """Xử lý một file PDF/ảnh, ghi Markdown và review report."""
 
-    path = Path(file_path)
-    ext = path.suffix.lower()
-    if ext not in DUOI_PDF and ext not in DUOI_ANH:
-        print(f"[SKIP] Không hỗ trợ: {path}")
-        return None
-
-    out_path = Path(cau_hinh.thu_muc_output) / f"{ten_file_an_toan(path.stem)}_structured.md"
-    if out_path.exists() and not force:
-        print(f"[SKIP] Output đã tồn tại: {out_path}")
-        return str(out_path)
-
-    print(f"[PROCESS] {path}")
-    if ext in DUOI_PDF:
-        body, _metadata = xu_ly_pdf(path, cau_hinh)
-    else:
-        body, _metadata = xu_ly_file_anh(path, cau_hinh)
-
-    final_md = body
-    final_md = postprocess_final_markdown(final_md)
-    final_md = gan_yaml_metadata_chuan(final_md, out_path, path, cau_hinh)
-    ghi_text_unicode(out_path, final_md)
-
-    extra_warnings = canh_bao_thuat_ngu_ctu(final_md) if cau_hinh.dung_tu_dien_ctu else []
-    warnings = tao_bao_cao_review(final_md, extra_warnings)
-    review_path = ghi_bao_cao_review(path, warnings, cau_hinh)
-
-    print(f"[DONE] Markdown: {out_path}")
-    if review_path:
-        print(f"[REVIEW] Báo cáo dòng nghi ngờ: {review_path}")
-    return str(out_path)
-
-
-def tim_file_ho_tro(path: str | Path) -> list[Path]:
-    """Tìm các file PDF/ảnh được hỗ trợ trong một file hoặc thư mục."""
-
-    p = Path(path)
-    if p.is_file():
-        return [p]
-    files: list[Path] = []
-    for item in sorted(p.rglob("*")):
-        if item.is_file() and item.suffix.lower() in DUOI_PDF.union(DUOI_ANH):
-            files.append(item)
-    return files
 
 
 # =========================================================
