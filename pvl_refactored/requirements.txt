@@ -1,0 +1,22 @@
+# Cài thêm cho nhánh LlamaParse cloud
+llama-cloud>=2.1
+python-dotenv>=1.0.0
+setuptools<81
+
+# PDF text/render và phân tích layout an toàn
+pymupdf>=1.24.0
+opencv-python>=4.8.0
+numpy>=1.24,<2.0
+
+# OCR local PadViet: giữ stack PaddleOCR 2.x vì code dùng API 2.x:
+#   PaddleOCR(... use_angle_cls/use_gpu/show_log ...)
+#   engine.ocr(... det=True/False, rec=True/False, cls=True/False)
+# Không bỏ version pin, nếu không pip sẽ kéo PaddleOCR/PaddlePaddle 3.x.
+paddleocr==2.9.1
+paddlepaddle==2.6.2
+
+# VietOCR recognition fallback.
+vietocr==0.3.12
+torch==2.4.1
+torchvision==0.19.1
+pillow>=10,<11
