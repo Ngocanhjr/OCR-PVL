@@ -58,6 +58,21 @@ class MarkdownOutputContractTest(unittest.TestCase):
         self.assertIn("| Cột A | Cột B |", output)
         self.assertIn("| 1 | Nội dung |", output)
 
+    def test_final_postprocess_converts_dash_breaks_inside_table_cells(self) -> None:
+        dash_break = "-" * 4
+        markdown = (
+            "<!-- page: 1 -->\n\n"
+            "| Cột A | Cột B |\n"
+            "| --- | --- |\n"
+            f"| Dòng 1 {dash_break} Dòng 2 | Giữ nguyên |\n"
+        )
+
+        output = postprocess_final_markdown(markdown)
+
+        self.assertIn("| --- | --- |", output)
+        self.assertIn("| Dòng 1<br>Dòng 2 | Giữ nguyên |", output)
+        self.assertNotIn(dash_break, output)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,6 +21,8 @@ from processing.page_markers import PAGE_BOUNDARY_RE, is_page_boundary_line, nor
 
 _TABLE_SEPARATOR_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{1,}:?\s*)+\|?\s*$")
 _TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
+_TABLE_CELL_HTML_BREAK_RE = re.compile(r"<br\s*/?>", flags=re.IGNORECASE)
+_TABLE_CELL_DASH_BREAK_RE = re.compile(r"\s*-{4,}\s*")
 
 
 SCANNER_WATERMARK_PATTERNS = [
@@ -51,9 +53,18 @@ def split_table_row(line: str) -> list[str]:
     return [re.sub(r"\s+", " ", c).strip() for c in s.split("|")]
 
 
+def normalize_table_cell_breaks(value: str) -> str:
+    """Đổi gạch dài trong table cell thành HTML line break để Markdown render đúng."""
+    text = str(value).strip()
+    text = _TABLE_CELL_HTML_BREAK_RE.sub("<br>", text)
+    text = _TABLE_CELL_DASH_BREAK_RE.sub("<br>", text)
+    text = re.sub(r"\s*<br>\s*", "<br>", text)
+    return re.sub(r"(?:<br>){2,}", "<br>", text).strip()
+
+
 def make_table_row(cells: Iterable[str], ncols: int | None = None) -> str:
     """Tạo lại markdown table row, tự pad cell rỗng nếu cần."""
-    cells = [str(c).strip() for c in cells]
+    cells = [normalize_table_cell_breaks(str(c)) for c in cells]
     if ncols is not None:
         if len(cells) < ncols:
             cells = cells + [""] * (ncols - len(cells))

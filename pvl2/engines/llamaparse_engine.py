@@ -277,7 +277,7 @@ def _split_table_row(line: str) -> list[str]:
     return [re.sub(r"\s+", " ", c).strip(" *") for c in s.split("|")]
 
 
-_TABLE_CELL_BREAK_RE = re.compile(r"<br\s*/?>", flags=re.IGNORECASE)
+_TABLE_CELL_BREAK_RE = re.compile(r"(?:<br\s*/?>|\s*-{4,}\s*)", flags=re.IGNORECASE)
 
 
 def _strip_cell_markup(value: str) -> str:
@@ -302,9 +302,9 @@ def _find_repeated_header_title(header_cells: list[str]) -> tuple[str | None, st
     """Tìm tên bảng bị LlamaParse lặp trong từng ô header.
 
     Ví dụ lỗi thường gặp:
-        | TÊN BẢNG<br/>Bước | TÊN BẢNG<br/>Lưu đồ | ... |
+        | TÊN BẢNG<br/>Bước | TÊN BẢNG + chuỗi gạch dài + Lưu đồ | ... |
 
-    Hàm trả về (title_key, title_text) nếu phần trước <br/> lặp lại ở nhiều ô.
+    Hàm trả về (title_key, title_text) nếu phần trước <br/> hoặc chuỗi gạch dài lặp lại ở nhiều ô.
     """
     candidates: dict[str, tuple[str, int]] = {}
     for cell in header_cells:
