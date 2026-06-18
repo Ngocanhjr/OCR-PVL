@@ -15,8 +15,8 @@ PROJECT_ROOT = OCR_ROOT.parent.parent
 NLCS_ROOT = PROJECT_ROOT / "nlcs" if (PROJECT_ROOT / "nlcs").exists() else OCR_ROOT
 
 FIELD_ORDER = [
-    "document_id",
-    "version_id",
+    "document_key",
+    "version_key",
     "title",
     "document_type",
     "domain",
@@ -26,7 +26,7 @@ FIELD_ORDER = [
     "issued_date",
     "effective_date",
     "expiry_date",
-    "version",
+    "version_label",
     "is_latest",
     "validity_status",
     "version_role",
@@ -40,28 +40,34 @@ FIELD_ORDER = [
     "ocr_status",
     "review_status",
     "rag_status",
+    "status_notes",
     "source_url",
     "source_file",
+    "source_path",
+    "canonical_markdown_path",
     "file_type",
     "accessed_date",
     "language",
     "confidentiality",
     "citation_type",
+    "related_asset_keys",
+    "checksum",
+    "parser",
+    "ocr_engine",
     "created_at",
     "updated_at",
-    "checksum",
     "notes",
 ]
 
 HUMAN_STRING_FIELDS = {
     "title",
-    "document_type",
     "domain",
     "department",
     "code",
-    "version",
+    "version_label",
+    "status_notes",
     "source_url",
-    "confidentiality",
+    "notes",
 }
 
 HUMAN_NULL_FIELDS = {
@@ -69,13 +75,13 @@ HUMAN_NULL_FIELDS = {
     "effective_date",
     "expiry_date",
     "accessed_date",
-    "notes",
 }
 
 SOURCE_EXTS = {
     ".pdf",
     ".doc",
     ".docx",
+    ".pptx",
     ".png",
     ".jpg",
     ".jpeg",
@@ -86,14 +92,17 @@ SOURCE_EXTS = {
     ".xlsx",
     ".csv",
     ".html",
+    ".txt",
 }
 
 FILE_TYPE_BY_EXT = {
     ".pdf": "pdf",
-    ".doc": "docx",
+    ".doc": "doc",
     ".docx": "docx",
+    ".pptx": "pptx",
     ".md": "md",
     ".html": "html",
+    ".txt": "txt",
     ".png": "image",
     ".jpg": "image",
     ".jpeg": "image",
@@ -104,6 +113,17 @@ FILE_TYPE_BY_EXT = {
     ".xlsx": "xlsx",
     ".csv": "csv",
 }
+
+BACKEND_DOCUMENT_TYPES = {"noi_quy", "quy_trinh", "bieu_mau", "hoi_dap", "unknown"}
+BACKEND_COLLECTION_STATUSES = {"link_collected", "collected", "downloaded", "missing", "failed"}
+BACKEND_OCR_STATUSES = {"not_started", "processing", "done", "failed", "need_review"}
+BACKEND_REVIEW_STATUSES = {"not_reviewed", "reviewing", "need_fix", "approved", "rejected"}
+BACKEND_VALIDITY_STATUSES = {"unchecked", "valid", "expired", "replaced", "unknown"}
+BACKEND_VERSION_ROLES = {"base", "replacement", "amendment", "supplement"}
+BACKEND_RAG_STATUSES = {"not_indexed", "chunked", "embedded", "indexed", "published", "deactivated", "failed"}
+BACKEND_CONFIDENTIALITY = {"public", "internal", "restricted"}
+BACKEND_CITATION_TYPES = {"page", "section", "paragraph"}
+BACKEND_FILE_TYPES = {"pdf", "doc", "docx", "image", "xlsx", "pptx", "txt", "md", "html", "csv", "url", "youtube"}
 
 OCR_METADATA_RE = re.compile(r"^\s*-\s*([^:]+):\s*(.*)\s*$")
 RAW_OCR_REPORT_HEADER_RE = re.compile(
@@ -312,7 +332,7 @@ def source_candidates_from_md(md_path: Path, ocr_meta: dict[str, str]) -> list[s
 
 
 def find_source_file(md_path: Path, existing: dict[str, Any], ocr_meta: dict[str, str], cli_source: str | None) -> Path | None:
-    for value in [cli_source, existing.get("source_file"), ocr_meta.get("source file")]:
+    for value in [cli_source, existing.get("source_path"), existing.get("source_file"), ocr_meta.get("source file")]:
         found = resolve_existing_path(str(value), md_path) if value else None
         if found:
             return found
@@ -345,7 +365,7 @@ def detect_file_type(source_path: Path | None, existing: dict[str, Any], fallbac
     return str(existing_type) if existing_type else ""
 
 
-def generated_document_id(source_path: Path | None, md_path: Path) -> str:
+def generated_document_key(source_path: Path | None, md_path: Path) -> str:
     stem = source_path.stem if source_path else md_path.stem
     prefix_parts = ["ctu"]
 
@@ -365,8 +385,8 @@ def generated_document_id(source_path: Path | None, md_path: Path) -> str:
     return "-".join(part for part in prefix_parts if part)
 
 
-def generated_version_id(document_id: str, checksum: str) -> str:
-    return f"{document_id}-{checksum[:12]}" if checksum else document_id
+def generated_version_key(document_key: str, checksum: str) -> str:
+    return f"{document_key}-{checksum[:12]}" if checksum else document_key
 
 
 def first_non_empty(*values: Any) -> Any:
@@ -376,12 +396,51 @@ def first_non_empty(*values: Any) -> Any:
     return None
 
 
+def existing_value(existing: dict[str, Any], *keys: str) -> Any:
+    return first_non_empty(*(existing.get(key) for key in keys))
+
+
+def string_value(*values: Any) -> str:
+    value = first_non_empty(*values)
+    return str(value) if value is not None else ""
+
+
+def normalize_enum(value: Any, allowed: set[str], default: str) -> str:
+    if is_empty(value):
+        return default
+    text = str(value).strip()
+    return text if text in allowed else default
+
+
+def normalize_citation_type(value: Any) -> str:
+    if str(value).strip() == "none":
+        return "paragraph"
+    return normalize_enum(value, BACKEND_CITATION_TYPES, "page")
+
+
 def list_value(value: Any) -> list[Any]:
     if is_empty(value):
         return []
     if isinstance(value, list):
         return value
     return [value]
+
+
+def source_file_name(source_path: Path | None, existing: dict[str, Any], ocr_meta: dict[str, str]) -> str:
+    if source_path:
+        return source_path.name
+
+    raw = first_non_empty(existing.get("source_file"), ocr_meta.get("source file"), "")
+    if not raw:
+        return ""
+    return Path(str(raw).strip().strip("`")).name
+
+
+def source_path_value(source_path: Path | None, existing: dict[str, Any]) -> str | None:
+    if source_path:
+        return path_for_metadata(source_path)
+    value = existing.get("source_path")
+    return str(value) if not is_empty(value) else None
 
 
 def looks_like_ocr_output(body: str, ocr_meta: dict[str, str]) -> bool:
@@ -402,65 +461,81 @@ def build_metadata(
     md_path: Path,
     existing: dict[str, Any],
     body: str,
-    args: argparse.Namespace,
+    args: MetadataOptions,
 ) -> dict[str, Any]:
     ocr_meta = parse_ocr_metadata(body)
     source_path = find_source_file(md_path, existing, ocr_meta, args.source_file)
-    checksum = checksum_file(source_path) if source_path else first_non_empty(ocr_meta.get("checksum"), existing.get("checksum"), "")
-    doc_id = first_non_empty(existing.get("document_id"), generated_document_id(source_path, md_path))
-    old_checksum = existing.get("checksum") if isinstance(existing.get("checksum"), str) else ""
-    current_version = existing.get("version_id")
-    auto_old_version = generated_version_id(str(doc_id), old_checksum) if old_checksum else None
-    if args.overwrite_auto or is_empty(current_version) or current_version == auto_old_version:
-        version_id = generated_version_id(str(doc_id), str(checksum or ""))
-    else:
-        version_id = current_version
-
-    ocr_status = first_non_empty(
-        args.ocr_status,
-        existing.get("ocr_status"),
-        "done" if looks_like_ocr_output(body, ocr_meta) else "not_started",
+    checksum = checksum_file(source_path) if source_path else first_non_empty(ocr_meta.get("checksum"), existing.get("checksum"), None)
+    document_key = first_non_empty(
+        existing_value(existing, "document_key", "document_id"),
+        generated_document_key(source_path, md_path),
     )
+    old_checksum = existing.get("checksum") if isinstance(existing.get("checksum"), str) else ""
+    current_version = existing_value(existing, "version_key", "version_id")
+    auto_old_version = generated_version_key(str(document_key), old_checksum) if old_checksum else None
+    if args.overwrite_auto or is_empty(current_version) or current_version == auto_old_version:
+        version_key = generated_version_key(str(document_key), str(checksum or ""))
+    else:
+        version_key = current_version
+
+    fallback_ocr_status = "done" if looks_like_ocr_output(body, ocr_meta) else "not_started"
+    ocr_status = normalize_enum(
+        first_non_empty(
+            args.ocr_status,
+            existing.get("ocr_status"),
+            fallback_ocr_status,
+        ),
+        BACKEND_OCR_STATUSES,
+        fallback_ocr_status,
+    )
+
+    raw_file_type = detect_file_type(source_path, existing, args.file_type)
+    raw_document_type = first_non_empty(args.document_type, existing.get("document_type"))
+    raw_confidentiality = first_non_empty(args.confidentiality, existing.get("confidentiality"))
 
     metadata: dict[str, Any] = {field: None for field in FIELD_ORDER}
 
     for field in HUMAN_STRING_FIELDS:
-        metadata[field] = existing.get(field, "")
+        metadata[field] = string_value(existing.get(field))
     for field in HUMAN_NULL_FIELDS:
         metadata[field] = existing.get(field) if not is_empty(existing.get(field)) else None
 
     metadata.update(
         {
-            "document_id": doc_id,
-            "version_id": version_id,
+            "document_key": document_key,
+            "version_key": version_key,
+            "document_type": normalize_enum(raw_document_type, BACKEND_DOCUMENT_TYPES, "unknown"),
             "audience": existing.get("audience") if not is_empty(existing.get("audience")) else ["student"],
-            "is_latest": existing.get("is_latest") if isinstance(existing.get("is_latest"), bool) else False,
-            "validity_status": first_non_empty(existing.get("validity_status"), "unchecked"),
-            "version_role": first_non_empty(existing.get("version_role"), "base"),
+            "version_label": string_value(existing.get("version_label"), existing.get("version")),
+            "is_latest": existing.get("is_latest") if isinstance(existing.get("is_latest"), bool) else True,
+            "validity_status": normalize_enum(existing.get("validity_status"), BACKEND_VALIDITY_STATUSES, "unchecked"),
+            "version_role": normalize_enum(existing.get("version_role"), BACKEND_VERSION_ROLES, "base"),
             "replaces": list_value(existing.get("replaces")),
             "replaced_by": list_value(existing.get("replaced_by")),
             "amends": list_value(existing.get("amends")),
             "amended_by": list_value(existing.get("amended_by")),
             "supplements": list_value(existing.get("supplements")),
             "supplemented_by": list_value(existing.get("supplemented_by")),
-            "collection_status": first_non_empty(existing.get("collection_status"), "collected"),
+            "collection_status": normalize_enum(existing.get("collection_status"), BACKEND_COLLECTION_STATUSES, "collected"),
             "ocr_status": ocr_status,
-            "review_status": first_non_empty(existing.get("review_status"), "not_reviewed"),
-            "rag_status": first_non_empty(existing.get("rag_status"), "not_indexed"),
-            "source_file": path_for_metadata(source_path) if source_path else first_non_empty(existing.get("source_file"), ocr_meta.get("source file"), ""),
-            "file_type": detect_file_type(source_path, existing, args.file_type),
-            "language": first_non_empty(args.language, existing.get("language"), "vi"),
-            "citation_type": first_non_empty(existing.get("citation_type"), "page"),
+            "review_status": normalize_enum(existing.get("review_status"), BACKEND_REVIEW_STATUSES, "not_reviewed"),
+            "rag_status": normalize_enum(existing.get("rag_status"), BACKEND_RAG_STATUSES, "not_indexed"),
+            "source_file": source_file_name(source_path, existing, ocr_meta),
+            "source_path": source_path_value(source_path, existing),
+            "canonical_markdown_path": first_non_empty(existing.get("canonical_markdown_path"), path_for_metadata(md_path)),
+            "file_type": normalize_enum(raw_file_type, BACKEND_FILE_TYPES, "md"),
+            "language": string_value(args.language, existing.get("language"), "vi") or "vi",
+            "confidentiality": normalize_enum(raw_confidentiality, BACKEND_CONFIDENTIALITY, "public"),
+            "citation_type": normalize_citation_type(first_non_empty(existing.get("citation_type"), "page")),
+            "related_asset_keys": list_value(existing_value(existing, "related_asset_keys", "related_asset_ids")),
+            "checksum": checksum,
+            "parser": first_non_empty(existing.get("parser"), None),
+            "ocr_engine": first_non_empty(existing.get("ocr_engine"), None),
             "created_at": first_non_empty(existing.get("created_at"), now_iso()),
             "updated_at": now_iso(),
-            "checksum": checksum,
+            "notes": string_value(existing.get("notes")),
         }
     )
-
-    if args.document_type:
-        metadata["document_type"] = args.document_type
-    if args.confidentiality:
-        metadata["confidentiality"] = args.confidentiality
 
     return metadata
 
@@ -587,13 +662,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Attach canonical YAML metadata to Markdown files.")
     parser.add_argument("path", help="Markdown file or directory.")
     parser.add_argument("--recursive", "-r", action="store_true", help="Process *.md recursively when path is a directory.")
-    parser.add_argument("--source-file", help="Original source file used for checksum/source_file.")
-    parser.add_argument("--ocr-status", choices=["not_started", "processing", "done", "failed", "need_review", "not_required"])
-    parser.add_argument("--file-type", choices=["pdf", "docx", "md", "html", "image", "xlsx", "csv", "url", "youtube"])
+    parser.add_argument("--source-file", help="Original source file used for checksum/source_file/source_path.")
+    parser.add_argument("--ocr-status", choices=sorted(BACKEND_OCR_STATUSES))
+    parser.add_argument("--file-type", choices=sorted(BACKEND_FILE_TYPES))
     parser.add_argument("--language", default="vi")
-    parser.add_argument("--document-type", help="Optional human-reviewed document_type override.")
+    parser.add_argument("--document-type", choices=sorted(BACKEND_DOCUMENT_TYPES), help="Optional human-reviewed document_type override.")
     parser.add_argument("--confidentiality", choices=["public", "internal", "restricted"], help="Optional human-reviewed confidentiality override.")
-    parser.add_argument("--overwrite-auto", action="store_true", help="Refresh generated version_id and auto fields where possible.")
+    parser.add_argument("--overwrite-auto", action="store_true", help="Refresh generated version_key and auto fields where possible.")
     parser.add_argument("--dry-run", action="store_true", help="Show files that would be changed without writing.")
     return parser
 

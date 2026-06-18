@@ -10,50 +10,38 @@ from validation.apply_metadata import FIELD_ORDER, iter_markdown_files, is_empty
 
 ENUMS = {
     "collection_status": {"link_collected", "collected", "downloaded", "missing", "failed"},
-    "ocr_status": {"not_started", "processing", "done", "failed", "need_review", "not_required"},
+    "ocr_status": {"not_started", "processing", "done", "failed", "need_review"},
     "review_status": {"not_reviewed", "reviewing", "need_fix", "approved", "rejected"},
     "validity_status": {"unchecked", "valid", "expired", "replaced", "unknown"},
     "version_role": {"base", "replacement", "amendment", "supplement"},
     "rag_status": {"not_indexed", "chunked", "embedded", "indexed", "published", "deactivated", "failed"},
-    "document_type": {
-        "noi_quy",
-        "quy_trinh",
-        "bieu_mau",
-        "hoi_dap",
-        "huong_dan",
-        "huong_dan_metadata",
-        "huong_dan_quan_tri",
-        "huong_dan_theo_doi",
-        "ghi_chu_nghien_cuu",
-    },
-    "file_type": {"pdf", "docx", "md", "html", "image", "xlsx", "csv", "url", "youtube"},
+    "document_type": {"noi_quy", "quy_trinh", "bieu_mau", "hoi_dap", "unknown"},
+    "file_type": {"pdf", "doc", "docx", "image", "xlsx", "pptx", "txt", "md", "html", "csv", "url", "youtube"},
     "confidentiality": {"public", "internal", "restricted"},
-    "citation_type": {"page", "section", "none"},
+    "citation_type": {"page", "section", "paragraph"},
 }
 
 AUTO_REQUIRED_FIELDS = {
-    "document_id",
-    "version_id",
+    "document_key",
+    "version_key",
+    "document_type",
     "collection_status",
     "ocr_status",
     "review_status",
     "rag_status",
-    "source_file",
     "file_type",
     "language",
+    "confidentiality",
     "citation_type",
     "created_at",
     "updated_at",
-    "checksum",
 }
 
 HUMAN_REVIEW_FIELDS = {
     "title",
-    "document_type",
     "domain",
     "department",
     "audience",
-    "confidentiality",
 }
 
 OPTIONAL_HUMAN_FIELDS = {
@@ -61,7 +49,7 @@ OPTIONAL_HUMAN_FIELDS = {
     "issued_date",
     "effective_date",
     "expiry_date",
-    "version",
+    "version_label",
     "version_role",
     "replaces",
     "replaced_by",
@@ -69,13 +57,21 @@ OPTIONAL_HUMAN_FIELDS = {
     "amended_by",
     "supplements",
     "supplemented_by",
+    "status_notes",
     "source_url",
+    "source_file",
+    "source_path",
     "accessed_date",
+    "related_asset_keys",
+    "checksum",
+    "parser",
+    "ocr_engine",
     "notes",
 }
 
 DATE_FIELDS = {"issued_date", "effective_date", "expiry_date", "accessed_date"}
 VERSION_RELATION_FIELDS = {"replaces", "replaced_by", "amends", "amended_by", "supplements", "supplemented_by"}
+LIST_FIELDS = VERSION_RELATION_FIELDS | {"related_asset_keys"}
 
 
 def scalar(metadata: dict[str, Any], key: str) -> str:
@@ -121,7 +117,7 @@ def validate_metadata_text(text: str) -> tuple[list[str], list[str]]:
         elif any(not isinstance(item, str) or not item for item in metadata["audience"]):
             errors.append("audience must contain non-empty strings")
 
-    for field in VERSION_RELATION_FIELDS:
+    for field in LIST_FIELDS:
         if field in metadata and not is_empty(metadata.get(field)):
             if not isinstance(metadata.get(field), list):
                 errors.append(f"{field} must be a list")
@@ -140,6 +136,9 @@ def validate_metadata_text(text: str) -> tuple[list[str], list[str]]:
         elif value not in allowed:
             errors.append(f"{field} has invalid enum: {value}")
 
+    if scalar(metadata, "document_type") == "unknown":
+        warnings.append("needs human review: document_type is unknown")
+
     checksum = scalar(metadata, "checksum")
     if checksum and not re.fullmatch(r"[0-9a-fA-F]{32}", checksum):
         errors.append("checksum must be a 32-character MD5 hex string")
@@ -150,8 +149,8 @@ def validate_metadata_text(text: str) -> tuple[list[str], list[str]]:
             errors.append(f"{field} must use YYYY-MM-DD")
 
     if scalar(metadata, "rag_status") == "published":
-        if scalar(metadata, "ocr_status") not in {"done", "not_required"}:
-            errors.append("published document must have ocr_status done or not_required")
+        if scalar(metadata, "ocr_status") != "done":
+            errors.append("published document must have ocr_status done")
         if scalar(metadata, "review_status") != "approved":
             errors.append("published document must have review_status approved")
         if scalar(metadata, "validity_status") != "valid":

@@ -86,7 +86,8 @@ class LlamaParseConfig:
 
     # Bảng / hình / layout
     output_tables_as_markdown: bool = True
-    merge_continued_tables: bool = True
+    # Giữ ranh giới trang để page citation không bị kéo row của trang sau lên trang trước.
+    merge_continued_tables: bool = False
     export_tables_as_xlsx: bool = False
     preserve_spatial_text: bool = False
     save_images: bool = False

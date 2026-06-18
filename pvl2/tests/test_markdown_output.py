@@ -8,6 +8,7 @@ from processing.page_markers import (
     split_markdown_by_page,
 )
 from processing.table_form_postprocess import postprocess_final_markdown
+from engines.llamaparse_engine import tao_llama_config
 
 
 class MarkdownOutputContractTest(unittest.TestCase):
@@ -50,20 +51,42 @@ class MarkdownOutputContractTest(unittest.TestCase):
         self.assertIn("| Cột A | Cột B |", output)
         self.assertIn("| 1 | Nội dung |", output)
 
-    def test_final_postprocess_converts_dash_breaks_inside_table_cells(self) -> None:
+    def test_final_postprocess_removes_break_artifacts_inside_table_cells(self) -> None:
         dash_break = "-" * 4
         markdown = (
             "<!-- page: 1 -->\n\n"
             "| Cột A | Cột B |\n"
             "| --- | --- |\n"
-            f"| Dòng 1 {dash_break} Dòng 2 | Giữ nguyên |\n"
+            f"| Dòng 1 {dash_break} Dòng 2<br/>Dòng 3 | Giữ nguyên |\n"
         )
 
         output = postprocess_final_markdown(markdown)
 
         self.assertIn("| --- | --- |", output)
-        self.assertIn("| Dòng 1<br>Dòng 2 | Giữ nguyên |", output)
+        self.assertIn("| Dòng 1; Dòng 2; Dòng 3 | Giữ nguyên |", output)
         self.assertNotIn(dash_break, output)
+        self.assertNotIn("<br", output.lower())
+
+    def test_final_postprocess_repairs_shifted_disciplinary_table_row(self) -> None:
+        markdown = (
+            "<!-- page: 1 -->\n\n"
+            "| TT | Nội dung vi phạm | Lần 1 | Lần 2 | Lần 3 | Ghi chú |\n"
+            "| --- | --- | --- | --- | --- | --- |\n"
+            "| 12 | Tiếp khách trong phòng ở. | Nhắc nhở | Khiển trách toàn KTX | Cảnh cáo toàn KTX | |\n"
+            "| Tiếp người khác giới trong phòng ở. | Cảnh cáo toàn KTX | Buộc ra khỏi KTX | | | |\n"
+        )
+
+        output = postprocess_final_markdown(markdown)
+
+        self.assertIn(
+            "| | Tiếp người khác giới trong phòng ở. | Cảnh cáo toàn KTX | Buộc ra khỏi KTX | | |",
+            output,
+        )
+
+    def test_llamaparse_config_keeps_continued_tables_on_original_pages(self) -> None:
+        cfg = tao_llama_config(page_start=4, page_end=6)
+
+        self.assertFalse(cfg.merge_continued_tables)
 
 
 if __name__ == "__main__":
