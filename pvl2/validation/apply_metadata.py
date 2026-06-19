@@ -40,7 +40,7 @@ FIELD_ORDER = [
     "ocr_status",
     "review_status",
     "rag_status",
-    "status_notes",
+    "status_note",
     "source_url",
     "source_file",
     "source_path",
@@ -48,7 +48,6 @@ FIELD_ORDER = [
     "file_type",
     "accessed_date",
     "language",
-    "confidentiality",
     "citation_type",
     "related_asset_keys",
     "checksum",
@@ -65,7 +64,7 @@ HUMAN_STRING_FIELDS = {
     "department",
     "code",
     "version_label",
-    "status_notes",
+    "status_note",
     "source_url",
     "notes",
 }
@@ -121,7 +120,6 @@ BACKEND_REVIEW_STATUSES = {"not_reviewed", "reviewing", "need_fix", "approved", 
 BACKEND_VALIDITY_STATUSES = {"unchecked", "valid", "expired", "replaced", "unknown"}
 BACKEND_VERSION_ROLES = {"base", "replacement", "amendment", "supplement"}
 BACKEND_RAG_STATUSES = {"not_indexed", "chunked", "embedded", "indexed", "published", "deactivated", "failed"}
-BACKEND_CONFIDENTIALITY = {"public", "internal", "restricted"}
 BACKEND_CITATION_TYPES = {"page", "section", "paragraph"}
 BACKEND_FILE_TYPES = {"pdf", "doc", "docx", "image", "xlsx", "pptx", "txt", "md", "html", "csv", "url", "youtube"}
 
@@ -140,7 +138,6 @@ class MetadataOptions:
     file_type: str | None = None
     language: str = "vi"
     document_type: str | None = None
-    confidentiality: str | None = None
     overwrite_auto: bool = False
 
 
@@ -465,7 +462,7 @@ def build_metadata(
 ) -> dict[str, Any]:
     ocr_meta = parse_ocr_metadata(body)
     source_path = find_source_file(md_path, existing, ocr_meta, args.source_file)
-    checksum = checksum_file(source_path) if source_path else first_non_empty(ocr_meta.get("checksum"), existing.get("checksum"), None)
+    checksum = checksum_file(source_path) if source_path else first_non_empty(ocr_meta.get("checksum"), existing.get("checksum"), checksum_file(md_path))
     document_key = first_non_empty(
         existing_value(existing, "document_key", "document_id"),
         generated_document_key(source_path, md_path),
@@ -491,7 +488,6 @@ def build_metadata(
 
     raw_file_type = detect_file_type(source_path, existing, args.file_type)
     raw_document_type = first_non_empty(args.document_type, existing.get("document_type"))
-    raw_confidentiality = first_non_empty(args.confidentiality, existing.get("confidentiality"))
 
     metadata: dict[str, Any] = {field: None for field in FIELD_ORDER}
 
@@ -525,7 +521,6 @@ def build_metadata(
             "canonical_markdown_path": first_non_empty(existing.get("canonical_markdown_path"), path_for_metadata(md_path)),
             "file_type": normalize_enum(raw_file_type, BACKEND_FILE_TYPES, "md"),
             "language": string_value(args.language, existing.get("language"), "vi") or "vi",
-            "confidentiality": normalize_enum(raw_confidentiality, BACKEND_CONFIDENTIALITY, "public"),
             "citation_type": normalize_citation_type(first_non_empty(existing.get("citation_type"), "page")),
             "related_asset_keys": list_value(existing_value(existing, "related_asset_keys", "related_asset_ids")),
             "checksum": checksum,
@@ -557,7 +552,6 @@ def apply_to_file(md_path: Path, args: argparse.Namespace) -> bool:
         file_type=args.file_type,
         language=args.language,
         document_type=args.document_type,
-        confidentiality=args.confidentiality,
         overwrite_auto=args.overwrite_auto,
     )
 
@@ -578,7 +572,6 @@ def apply_metadata_to_markdown(
     file_type: str | None = None,
     language: str = "vi",
     document_type: str | None = None,
-    confidentiality: str | None = None,
     overwrite_auto: bool = False,
 ) -> str:
     """Attach canonical YAML front matter to Markdown text.
@@ -595,7 +588,6 @@ def apply_metadata_to_markdown(
         file_type=file_type,
         language=language,
         document_type=document_type,
-        confidentiality=confidentiality,
         overwrite_auto=overwrite_auto,
     )
     metadata = build_metadata(Path(md_path), existing, body, options)
@@ -610,7 +602,6 @@ def apply_metadata_to_file(
     file_type: str | None = None,
     language: str = "vi",
     document_type: str | None = None,
-    confidentiality: str | None = None,
     overwrite_auto: bool = False,
 ) -> Path:
     """Attach canonical YAML front matter to an existing Markdown file."""
@@ -624,7 +615,6 @@ def apply_metadata_to_file(
         file_type=file_type,
         language=language,
         document_type=document_type,
-        confidentiality=confidentiality,
         overwrite_auto=overwrite_auto,
     )
     path.write_text(updated, encoding="utf-8", newline="\n")
@@ -667,7 +657,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--file-type", choices=sorted(BACKEND_FILE_TYPES))
     parser.add_argument("--language", default="vi")
     parser.add_argument("--document-type", choices=sorted(BACKEND_DOCUMENT_TYPES), help="Optional human-reviewed document_type override.")
-    parser.add_argument("--confidentiality", choices=["public", "internal", "restricted"], help="Optional human-reviewed confidentiality override.")
     parser.add_argument("--overwrite-auto", action="store_true", help="Refresh generated version_key and auto fields where possible.")
     parser.add_argument("--dry-run", action="store_true", help="Show files that would be changed without writing.")
     return parser

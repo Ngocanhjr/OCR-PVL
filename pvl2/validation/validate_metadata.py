@@ -17,7 +17,6 @@ ENUMS = {
     "rag_status": {"not_indexed", "chunked", "embedded", "indexed", "published", "deactivated", "failed"},
     "document_type": {"noi_quy", "quy_trinh", "bieu_mau", "hoi_dap", "unknown"},
     "file_type": {"pdf", "doc", "docx", "image", "xlsx", "pptx", "txt", "md", "html", "csv", "url", "youtube"},
-    "confidentiality": {"public", "internal", "restricted"},
     "citation_type": {"page", "section", "paragraph"},
 }
 
@@ -31,8 +30,8 @@ AUTO_REQUIRED_FIELDS = {
     "rag_status",
     "file_type",
     "language",
-    "confidentiality",
     "citation_type",
+    "checksum",
     "created_at",
     "updated_at",
 }
@@ -57,13 +56,12 @@ OPTIONAL_HUMAN_FIELDS = {
     "amended_by",
     "supplements",
     "supplemented_by",
-    "status_notes",
+    "status_note",
     "source_url",
     "source_file",
     "source_path",
     "accessed_date",
     "related_asset_keys",
-    "checksum",
     "parser",
     "ocr_engine",
     "notes",
@@ -155,8 +153,6 @@ def validate_metadata_text(text: str) -> tuple[list[str], list[str]]:
             errors.append("published document must have review_status approved")
         if scalar(metadata, "validity_status") != "valid":
             errors.append("published document must have validity_status valid")
-        if scalar(metadata, "confidentiality") != "public":
-            errors.append("published document must have confidentiality public")
 
     return errors, warnings
 
