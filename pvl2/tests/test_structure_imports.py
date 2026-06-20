@@ -14,9 +14,11 @@ class StructureImportTest(unittest.TestCase):
     def test_router_modules_are_available_from_new_packages(self) -> None:
         from pipeline.hybrid_page_router import parse_manual_pages
         from pipeline.hybrid_router import run_document_parse
+        from pipeline.quality import assess_table_page
 
         self.assertEqual(parse_manual_pages("1,3-4"), [1, 3, 4])
         self.assertTrue(callable(run_document_parse))
+        self.assertTrue(callable(assess_table_page))
 
 
 if __name__ == "__main__":

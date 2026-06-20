@@ -55,6 +55,11 @@ def _add_llama_args(p: argparse.ArgumentParser) -> None:
         help="Bật aggressive table extraction. Chỉ dùng khi trang thật sự có bảng/lưu đồ phức tạp.",
     )
     g.add_argument("--no-repair-false-tables", action="store_true", help="Tắt hậu xử lý sửa bảng giả của LlamaParse.")
+    g.add_argument(
+        "--no-table-quality-retry",
+        action="store_true",
+        help="Tắt quality gate tự retry trang bảng/lưu đồ bằng agentic_plus + spatial khi score thấp.",
+    )
 
 
 def _add_local_ocr_args(p: argparse.ArgumentParser) -> None:

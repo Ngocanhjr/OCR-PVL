@@ -266,6 +266,7 @@ def xu_ly_file_bang_cli(input_file: Path, args, force: bool = False) -> Path | N
             preserve_spatial_text=args.spatial, disable_cache=args.disable_cache,
             aggressive_tables=args.aggressive_tables,
             repair_false_tables=not args.no_repair_false_tables,
+            table_quality_retry=not args.no_table_quality_retry,
             base_config=cau_hinh,
         )
 
