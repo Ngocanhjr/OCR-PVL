@@ -180,6 +180,18 @@ def validate_metadata_text(text: str) -> tuple[list[str], list[str]]:
         if scalar(metadata, "validity_status") != "valid":
             errors.append("published document must have validity_status valid")
 
+    if scalar(metadata, "validity_status") == "replaced" and not metadata.get("replaced_by"):
+        errors.append("replaced document requires replaced_by")
+
+    if scalar(metadata, "version_role") == "replacement" and not metadata.get("replaces"):
+        errors.append("replacement version requires replaces")
+
+    if scalar(metadata, "version_role") == "amendment" and not metadata.get("amends"):
+        errors.append("amendment version requires amends")
+
+    if scalar(metadata, "version_role") == "supplement" and not metadata.get("supplements"):
+        errors.append("supplement version requires supplements")
+
     return errors, warnings
 
 
