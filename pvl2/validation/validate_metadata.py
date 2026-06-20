@@ -20,20 +20,47 @@ ENUMS = {
     "citation_type": {"page", "section", "paragraph"},
 }
 
-AUTO_REQUIRED_FIELDS = {
+CORE_METADATA_FIELDS = [
     "document_key",
     "version_key",
+    "title",
     "document_type",
-    "collection_status",
-    "ocr_status",
-    "review_status",
-    "rag_status",
+    "domain",
+    "department",
+    "audience",
+    "version_label",
+    "version_role",
+    "is_latest",
+    "source_file",
+    "source_path",
+    "canonical_markdown_path",
     "file_type",
     "language",
     "citation_type",
     "checksum",
-    "created_at",
-    "updated_at",
+    "collection_status",
+    "ocr_status",
+    "review_status",
+    "validity_status",
+    "rag_status",
+]
+
+AUTO_REQUIRED_FIELDS = {
+    "document_key",
+    "version_key",
+    "document_type",
+    "is_latest",
+    "validity_status",
+    "version_role",
+    "collection_status",
+    "ocr_status",
+    "review_status",
+    "rag_status",
+    "canonical_markdown_path",
+    "file_type",
+    "language",
+    "citation_type",
+    "checksum",
 }
 
 HUMAN_REVIEW_FIELDS = {
@@ -49,7 +76,6 @@ OPTIONAL_HUMAN_FIELDS = {
     "effective_date",
     "expiry_date",
     "version_label",
-    "version_role",
     "replaces",
     "replaced_by",
     "amends",
@@ -89,7 +115,7 @@ def validate_metadata_text(text: str) -> tuple[list[str], list[str]]:
     if not metadata:
         return ["missing YAML front matter"], []
 
-    for field in FIELD_ORDER:
+    for field in CORE_METADATA_FIELDS:
         if field not in metadata:
             errors.append(f"missing field: {field}")
 

@@ -272,6 +272,10 @@ def checksum_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def checksum_text(text: str) -> str:
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
 def resolve_existing_path(value: str | None, md_path: Path) -> Path | None:
     if not value:
         return None
@@ -462,7 +466,8 @@ def build_metadata(
 ) -> dict[str, Any]:
     ocr_meta = parse_ocr_metadata(body)
     source_path = find_source_file(md_path, existing, ocr_meta, args.source_file)
-    checksum = checksum_file(source_path) if source_path else first_non_empty(ocr_meta.get("checksum"), existing.get("checksum"), checksum_file(md_path))
+    fallback_checksum = checksum_file(md_path) if md_path.exists() else checksum_text(body)
+    checksum = checksum_file(source_path) if source_path else first_non_empty(ocr_meta.get("checksum"), existing.get("checksum"), fallback_checksum)
     document_key = first_non_empty(
         existing_value(existing, "document_key", "document_id"),
         generated_document_key(source_path, md_path),

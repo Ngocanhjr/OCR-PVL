@@ -6,8 +6,11 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = PROJECT_ROOT / "chatbot" / "backend"
+OCR_ROOT = PROJECT_ROOT / "ocr" / "pvl2"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
+if str(OCR_ROOT) not in sys.path:
+    sys.path.insert(0, str(OCR_ROOT))
 
 from app.schemas.documents import DocumentMetadata
 from validation.apply_metadata import apply_metadata_to_markdown, split_front_matter
